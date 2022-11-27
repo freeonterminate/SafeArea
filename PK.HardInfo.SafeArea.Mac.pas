@@ -29,6 +29,7 @@ uses
   , FMX.Types
   , FMX.Platform
   , Macapi.AppKit
+  , Macapi.Foundation
   , Macapi.ObjectiveC
   , Macapi.Helpers
   , FMX.Helpers.Mac
@@ -36,18 +37,9 @@ uses
   ;
 
 type
-  TMacSafeArea = class(TInterfacedObject, ISafeArea)
-  private var
-    FDpWorkArea: TRectF;
-    FPxRect: TRect;
-    FScale: Single;
-  private
-    function GetPxRect: TRect;
-    function GetDpRect: TRectF;
-    function GetMarginRect: TRectF;
-    procedure Update;
-  public
-    constructor Create; reintroduce;
+  TMacSafeArea = class(TCustomSafeArea)
+  protected
+    procedure Update(const AForm: TCommonCustomForm); override;
   end;
 
   TMacSafeAreaFactory = class(TSafeAreaFactory)
@@ -75,71 +67,12 @@ end;
 
 { TMacSafeArea }
 
-constructor TMacSafeArea.Create;
+procedure TMacSafeArea.Update(const AForm: TCommonCustomForm);
 begin
-  inherited Create;
-  Update;
-end;
+  var F := TSafeAreaUtils.GetActiveForm(AForm);
+  var D := TSafeAreaUtils.GetFormDisplay(F);
 
-function TMacSafeArea.GetDpRect: TRectF;
-begin
-  Result :=
-    RectF(
-      FPxRect.Left / FScale,
-      FPxRect.Top / FScale,
-      FPxRect.Right / FScale,
-      FPxRect.Bottom / FScale
-    );
-end;
-
-function TMacSafeArea.GetMarginRect: TRectF;
-begin
-  var Form := Screen.ActiveForm;
-  if Form = nil then
-    Form := Application.MainForm;
-
-  // macOS ではフルスクリーン時以外関係ない
-  if (Form = nil) or (not Form.FullScreen) then
-    Exit(TRectF.Empty);
-
-  var DpRect := GetDpRect;
-
-  Result :=
-    RectF(
-      DpRect.Left,
-      DpRect.Top,
-      FDpWorkArea.Right - DpRect.Right,
-      FDpWorkArea.Bottom - DpRect.Bottom
-    );
-end;
-
-function TMacSafeArea.GetPxRect: TRect;
-begin
-  Result := FPxRect;
-end;
-
-procedure TMacSafeArea.Update;
-begin
-  FDpWorkArea := TRectF.Empty;
-  for var i := 0 to Screen.DisplayCount - 1 do
-  begin
-    var D := Screen.Displays[i];
-
-    if D.Primary then
-    begin
-      FDpWorkArea := D.Bounds;
-      Break;
-    end;
-  end;
-
-  FScale := 1;
-  var Service: IFMXDeviceMetricsService;
-  if
-    TPlatformServices.Current.SupportsPlatformService(
-      IFMXDeviceMetricsService,
-      Service)
-  then
-    FScale := Service.GetDisplayMetrics.ScreenScale;
+  var DpWorkArea := D.Bounds;
 
   var R := TRectF.Empty;
   if TOSVersion.Check(12) then
@@ -150,11 +83,31 @@ begin
 
   FPxRect :=
     Rect(
-      Trunc(FDpWorkArea.Left * FScale + R.left),
-      Trunc(FDpWorkArea.Top * FScale + R.top),
-      Trunc(FDpWorkArea.Right * FScale + R.top),
-      Trunc(FDpWorkArea.Bottom * FScale - R.bottom)
+      Trunc(DpWorkArea.Left * D.Scale + R.left),
+      Trunc(DpWorkArea.Top * D.Scale + R.top),
+      Trunc(DpWorkArea.Right * D.Scale + R.top),
+      Trunc(DpWorkArea.Bottom * D.Scale - R.bottom)
     );
+
+  FDpRect :=
+    RectF(
+      FPxRect.Left / D.Scale,
+      FPxRect.Top / D.Scale,
+      FPxRect.Right / D.Scale,
+      FPxRect.Bottom / D.Scale
+    );
+
+  // macOS ではフルスクリーン時以外関係ない
+  if (F = nil) or (not F.FullScreen) then
+    FMarginRect := TRectF.Empty
+  else
+    FMarginRect :=
+      RectF(
+        FDpRect.Left,
+        FDpRect.Top,
+        DpWorkArea.Right - FDpRect.Right,
+        DpWorkArea.Bottom - FDpRect.Bottom
+      );
 end;
 
 initialization

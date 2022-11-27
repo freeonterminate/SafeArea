@@ -35,17 +35,9 @@ uses
   ;
 
 type
-  TiOSSafeArea = class(TInterfacedObject, ISafeArea)
-  private var
-    FPxWorkArea: TRectF;
-    FPxRect: TRect;
-  private
-    function GetPxRect: TRect;
-    function GetDpRect: TRectF;
-    function GetMarginRect: TRectF;
-    procedure Update;
-  public
-    constructor Create; reintroduce;
+  TiOSSafeArea = class(TCustomSafeArea)
+  protected
+    procedure Update(const AForm: TCommonCustomForm); override;
   end;
 
   TiOSSafeAreaFactory = class(TSafeAreaFactory)
@@ -55,14 +47,8 @@ type
 
 procedure RegisterSafeArea;
 begin
-  TThread.ForceQueue(
-    nil,
-    procedure
-    begin
-      var Factory := TiOSSafeAreaFactory.Create;
-      TPlatformServices.Current.AddPlatformService(ISafeAreaFactory, Factory);
-    end
-  );
+  var Factory := TiOSSafeAreaFactory.Create;
+  TPlatformServices.Current.AddPlatformService(ISafeAreaFactory, Factory);
 end;
 
 { TiOSSafeAreaFactory }
@@ -74,51 +60,52 @@ end;
 
 { TiOSSafeArea }
 
-constructor TiOSSafeArea.Create;
+procedure TiOSSafeArea.Update(const AForm: TCommonCustomForm);
 begin
-  inherited Create;
-  Update;
-end;
+  var FormTop := 0.0;
+  var Insets := TRectF.Empty;
+  var DpWorkArea := MainScreen.bounds.ToRectF;
 
-function TiOSSafeArea.GetDpRect: TRectF;
-begin
-  // iOS は DP と PX が一致する
-  Result := GetPxRect;
-end;
-
-function TiOSSafeArea.GetMarginRect: TRectF;
-begin
-  // iOS は Form.Top 分すでに避けられているので、その分を引く
-  Result :=
-    RectF(
-      FPxRect.Left,
-      FPxRect.Top - Application.MainForm.Top,
-      FPxWorkArea.Right - FPxRect.Right,
-      FPxWorkArea.Bottom - FPxRect.Bottom
-    );
-end;
-
-function TiOSSafeArea.GetPxRect: TRect;
-begin
-  Result := FPxRect;
-end;
-
-procedure TiOSSafeArea.Update;
-begin
-  FPxWorkArea := MainScreen.bounds.ToRectF;
-
-  var R := TRectF.Empty;
-  if (Application.MainForm <> nil) and TOSVersion.Check(11) then
+  var F := TSafeAreaUtils.GetActiveForm(AForm);
+  if F <> nil then
   begin
-    var Insets :=
-      WindowHandleToPlatform(Application.MainForm.Handle).Wnd.safeAreaInsets;
-    R := RectF(Insets.left, Insets.top, Insets.right, Insets.bottom);
+    FormTop := F.Top;
+
+    var Wnd := WindowHandleToPlatform(F.Handle).Wnd;
+
+    if TOSVersion.Check(11) then
+    begin
+      var OrgInsets := Wnd.safeAreaInsets;
+      Insets :=
+        RectF(OrgInsets.left, OrgInsets.top, OrgInsets.right, OrgInsets.bottom);
+    end;
+
+    DpWorkArea := Wnd.bounds.ToRectF;
   end;
 
-  FPxRect.Left := Trunc(FPxWorkArea.Left + R.left);
-  FPxRect.Top := Trunc(FPxWorkArea.Top + R.top);
-  FPxRect.Right := Trunc(FPxWorkArea.Right - R.right);
-  FPxRect.Bottom := Trunc(FPxWorkArea.Bottom - R.bottom);
+  FDpRect.Left := DpWorkArea.Left + Insets.left;
+  FDpRect.Top := DpWorkArea.Top + Insets.top;
+  FDpRect.Right := DpWorkArea.Right - Insets.right;
+  FDpRect.Bottom := DpWorkArea.Bottom - Insets.bottom;
+
+  //var S := MainScreen.scale;
+  var S := TSafeAreaUtils.GetScale(F);
+  FPxRect :=
+    RectF(
+      FDpRect.Left * S,
+      FDpRect.Top * S,
+      FDpRect.Right * S,
+      FDpRect.Bottom * S
+    ).Round;
+
+  // iOS は Form.Top 分すでに避けられているので、その分を引く
+  FMarginRect :=
+    RectF(
+      FDpRect.Left,
+      FDpRect.Top - FormTop,
+      DpWorkArea.Right - FDpRect.Right,
+      DpWorkArea.Bottom - FDpRect.Bottom
+    );
 end;
 
 initialization

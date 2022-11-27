@@ -18,7 +18,7 @@
  *   // Root is a TLayout placed on top of Form and Root.Align = Contents.
  *   // Place any other control on top of the Root and
  *   // it will automatically support the SafeArea.
- *   Root.Margin.Rect := TSafeArea.MerginRect;
+ *   Root.Margin.Rect := TSafeArea.GetMerginRect(Form);
  *
  * HISTORY
  *   2022/11/27 Version 1.0.0
@@ -31,6 +31,7 @@ interface
 uses
   System.SysUtils
   , System.Types
+  , FMX.Forms
   , PK.HardInfo.SafeArea.Default
   ;
 
@@ -41,20 +42,18 @@ type
   private
     class function GetPxRect: TRect; static;
     class function GetDpRect: TRectF; static;
-    class function GetMarginRect: TRectF; static;
   public
     class constructor CreateClass; reintroduce;
     class property PxRect: TRect read GetPxRect;
     class property DpRect: TRectF read GetDpRect;
-    class property MarginRect: TRectF read GetMarginRect;
-    class procedure Update;
+    class function GetMarginRect(const AForm: TCommonCustomForm = nil): TRectF;
+    class procedure Update(const AForm: TCommonCustomForm = nil);
   end;
 
 implementation
 
 uses
-  FMX.Forms
-  , FMX.Platform
+  FMX.Platform
   {$IFDEF MSWINDOWS}
   , PK.HardInfo.SafeArea.Win
   {$ENDIF}
@@ -93,12 +92,12 @@ begin
     Result := FSafeArea.GetDpRect;
 end;
 
-class function TSafeArea.GetMarginRect: TRectF;
+class function TSafeArea.GetMarginRect(const AForm: TCommonCustomForm): TRectF;
 begin
   if FSafeArea = nil then
     Result := TRectF.Empty
   else
-    Result := FSafeArea.GetMarginRect;
+    Result := FSafeArea.GetMarginRect(AForm);
 end;
 
 class function TSafeArea.GetPxRect: TRect;
@@ -109,10 +108,10 @@ begin
     Result := FSafeArea.GetPxRect;
 end;
 
-class procedure TSafeArea.Update;
+class procedure TSafeArea.Update(const AForm: TCommonCustomForm);
 begin
   if FSafeArea <> nil then
-    FSafeArea.Update;
+    FSafeArea.Update(AForm);
 end;
 
 end.

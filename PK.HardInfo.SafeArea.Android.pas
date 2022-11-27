@@ -25,32 +25,23 @@ implementation
 uses
   System.SysUtils
   , System.Types
+  , Androidapi.JNIBridge
+  , Androidapi.JNI.App
+  , Androidapi.JNI.GraphicsContentViewText
+  , Androidapi.JNI.JavaTypes
+  , Androidapi.Helpers
   , FMX.Forms
   , FMX.Helpers.Android
   , FMX.Platform
   , FMX.Platform.Android
   , FMX.Types
-  , Androidapi.JNIBridge
-  , Androidapi.JNI.GraphicsContentViewText
-  , Androidapi.JNI.JavaTypes
-  , Androidapi.Helpers
   , PK.HardInfo.SafeArea.Default
   ;
 
 type
-  TAndroidSafeArea = class(TInterfacedObject, ISafeArea)
-  private var
-    FDpWorkArea: TRectF;
-    FDpRect: TRectF;
-    FPxRect: TRectF;
-    FDpCutoutTop: Single;
-  private
-    function GetPxRect: TRect;
-    function GetDpRect: TRectF;
-    function GetMarginRect: TRectF;
-    procedure Update;
-  public
-    constructor Create; reintroduce;
+  TAndroidSafeArea = class(TCustomSafeArea)
+  protected
+    procedure Update(const AForm: TCommonCustomForm); override;
   end;
 
   TAndroidSafeAreaFactory = class(TSafeAreaFactory)
@@ -154,57 +145,12 @@ end;
 
 { TAndroidSafeArea }
 
-constructor TAndroidSafeArea.Create;
+procedure TAndroidSafeArea.Update(const AForm: TCommonCustomForm);
 begin
-  inherited Create;
-  Update;
-end;
-
-function TAndroidSafeArea.GetDpRect: TRectF;
-begin
-  Result := FDpRect;
-end;
-
-function TAndroidSafeArea.GetMarginRect: TRectF;
-begin
-  Result :=
-    RectF(
-      FDpRect.Left,
-      FDpCutoutTop,
-      FDpWorkArea.Right - FDpRect.Right,
-      FDpWorkArea.Bottom - FDpRect.Bottom
-    );
-end;
-
-function TAndroidSafeArea.GetPxRect: TRect;
-begin
-  Result := FPxRect.Round;
-end;
-
-procedure TAndroidSafeArea.Update;
-begin
-  if not TOSVersion.Check(12) then
-  begin
-    FDpRect := Screen.WorkAreaRect;
-    Exit;
-  end;
-
-  // WorkArea 取得
-  var PxWorkArea := TRectF.Empty;
-  for var i := 0 to Screen.DisplayCount - 1 do
-  begin
-    var D := Screen.Displays[i];
-
-    if D.Primary then
-    begin
-      PxWorkArea := D.PhysicalWorkarea;
-      Break;
-    end;
-  end;
-
-  // Scale / SysScale 取得
+  // WorkArea / Scale / SysScale 取得
   var SysScale := 1.0;
   var Scale := 1.0;
+
   var MetricsServ: IFMXDeviceMetricsService;
   if
     TPlatformServices.Current.SupportsPlatformService(
@@ -213,15 +159,20 @@ begin
   then
   begin
     var M := MetricsServ.GetDisplayMetrics;
+
     Scale := M.ScreenScale;
 
     // 1 Pixel = Scale * Inch(2.54) * Virtual-DPI(96) / PPI
     SysScale := Scale * 2.54 * 96 / M.PixelsPerInch;
   end;
 
-  var PxCutoutTop := Scale;
-
   // Cutout 取得
+  var D := TSafeAreaUtils.GetFormDisplay(AForm);
+
+  var PxWorkArea := D.PhysicalWorkArea;
+  var PxCutoutTop := 0.0;
+  var BasePxRect := TRectF.Empty;
+
   if TOSVersion.Check(13) then
   begin
     // Version 13 以降
@@ -241,46 +192,43 @@ begin
     begin
       PxCutoutTop := Insets.top;
 
-      FPxRect.left := PxWorkArea.left + Insets.left;
-      FPxRect.Top := PxWorkArea.Top + PxCutoutTop;
-      FPxRect.Right := PxWorkArea.Right - Insets.right;
-      FPxRect.Bottom := PxWorkArea.Bottom - Insets.bottom;
+      BasePxRect.left := PxWorkArea.left + Insets.left;
+      BasePxRect.Top := PxWorkArea.Top + PxCutoutTop;
+      BasePxRect.Right := PxWorkArea.Right - Insets.right;
+      BasePxRect.Bottom := PxWorkArea.Bottom - Insets.bottom;
     end;
   end
   else
   begin
-    // Version 12
-    var Cutout :=
-      TJWindowInsets30.Wrap(
-        TAndroidHelper.JObjectToID(
-          TAndroidHelper.Activity.getWindow.getDecorView.getRootWindowInsets
-        )
-      ).getDisplayCutout;
-
-    if Cutout <> nil then
+    if TOSVersion.Check(12) then
     begin
-      PxCutoutTop := Cutout.getSafeInsetTop;
+      // Version 12
+      var Cutout :=
+        TJWindowInsets30.Wrap(
+          TAndroidHelper.JObjectToID(
+            TAndroidHelper.Activity.getWindow.getDecorView.getRootWindowInsets
+          )
+        ).getDisplayCutout;
 
-      FPxRect.left := PxWorkArea.left + Cutout.getSafeInsetLeft;
-      FPxRect.Top := PxWorkArea.Top + PxCutoutTop;
-      FPxRect.Right := PxWorkArea.Right - Cutout.getSafeInsetRight;
-      FPxRect.Bottom := PxWorkArea.Bottom - Cutout.getSafeInsetBottom;
+      if Cutout <> nil then
+      begin
+        PxCutoutTop := Cutout.getSafeInsetTop;
+
+        BasePxRect.left := PxWorkArea.left + Cutout.getSafeInsetLeft;
+        BasePxRect.Top := PxWorkArea.Top + PxCutoutTop;
+        BasePxRect.Right := PxWorkArea.Right - Cutout.getSafeInsetRight;
+        BasePxRect.Bottom := PxWorkArea.Bottom - Cutout.getSafeInsetBottom;
+      end;
+    end
+    else
+    begin
+      // Version 12 未満
+      BasePxRect := PxWorkArea;
     end;
   end;
 
   // Dp 化
-  FDpCutoutTop := 
-    PxCutoutTop / Scale;
-
-  FDpRect :=
-    RectF(
-      FPxRect.Left / Scale,
-      FPxRect.Top / Scale,
-      FPxRect.Right / Scale,
-      FPxRect.Bottom / Scale
-    );
-
-  FDpWorkArea := 
+  var DpWorkArea :=
     RectF(
       PxWorkArea.Left / Scale,
       PxWorkArea.Top / Scale,
@@ -288,14 +236,30 @@ begin
       PxWorkArea.Bottom / Scale
     );
 
+  FDpRect :=
+    RectF(
+      BasePxRect.Left / Scale,
+      BasePxRect.Top / Scale,
+      BasePxRect.Right / Scale,
+      BasePxRect.Bottom / Scale
+    );
+
+  FMarginRect :=
+    RectF(
+      FDpRect.Left,
+      PxCutoutTop / Scale,
+      DpWorkArea.Right - FDpRect.Right,
+      DpWorkArea.Bottom - FDpRect.Bottom
+    );
+
   // FMX.Px to System.Px
   FPxRect :=
     RectF(
-      FPxRect.Left * SysScale,
-      FPxRect.Top * SysScale,
-      FPxRect.Right * SysScale,
-      FPxRect.Bottom * SysScale
-    );
+      BasePxRect.Left * SysScale,
+      BasePxRect.Top * SysScale,
+      BasePxRect.Right * SysScale,
+      BasePxRect.Bottom * SysScale
+    ).Round;
 end;
 
 initialization

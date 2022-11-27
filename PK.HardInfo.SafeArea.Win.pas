@@ -31,14 +31,9 @@ uses
   ;
 
 type
-  TWinSafeArea = class(TInterfacedObject, ISafeArea)
-  private var
-    FPxWorkArea: TRect;
-  private
-    function GetPxRect: TRect;
-    function GetDpRect: TRectF;
-    function GetMarginRect: TRectF;
-    procedure Update;
+  TWinSafeArea = class(TCustomSafeArea)
+  protected
+    procedure Update(const AForm: TCommonCustomForm); override;
   end;
 
   TWinSafeAreaFactory = class(TSafeAreaFactory)
@@ -62,36 +57,17 @@ end;
 
 { TWinSafeArea }
 
-function TWinSafeArea.GetDpRect: TRectF;
+procedure TWinSafeArea.Update(const AForm: TCommonCustomForm);
 begin
-  var R := FPxWorkArea;
-  Result.TopLeft := PxToDp(R.TopLeft);
-  Result.BottomRight := PxToDp(R.BottomRight);
-end;
+  var D := TSafeAreaUtils.GetFormDisplay(AForm);
 
-function TWinSafeArea.GetMarginRect: TRectF;
-begin
+  FPxRect := D.PhysicalWorkarea;
+
+  FDpRect.TopLeft := PxToDp(FPxRect.TopLeft);
+  FDpRect.BottomRight := PxToDp(FPxRect.BottomRight);
+
   // Windows は OS が全部面倒を見てくれるので何もしない
-  Result := TRectF.Empty;
-end;
-
-function TWinSafeArea.GetPxRect: TRect;
-begin
-  Result := FPxWorkArea;
-end;
-
-procedure TWinSafeArea.Update;
-begin
-  for var i := 0 to Screen.DisplayCount - 1 do
-  begin
-    var D := Screen.Displays[i];
-
-    if D.Primary then
-    begin
-      FPxWorkArea := D.PhysicalWorkarea;
-      Break;
-    end;
-  end;
+  FMarginRect := TRectF.Empty;
 end;
 
 end.
