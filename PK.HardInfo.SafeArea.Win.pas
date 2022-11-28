@@ -33,7 +33,7 @@ uses
 type
   TWinSafeArea = class(TCustomSafeArea)
   protected
-    procedure Update(const AForm: TCommonCustomForm); override;
+    procedure Measure(const AForm: TCommonCustomForm); override;
   end;
 
   TWinSafeAreaFactory = class(TSafeAreaFactory)
@@ -57,7 +57,7 @@ end;
 
 { TWinSafeArea }
 
-procedure TWinSafeArea.Update(const AForm: TCommonCustomForm);
+procedure TWinSafeArea.Measure(const AForm: TCommonCustomForm);
 begin
   var D := TSafeAreaUtils.GetFormDisplay(AForm);
 

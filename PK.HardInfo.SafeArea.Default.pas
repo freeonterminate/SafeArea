@@ -15,7 +15,7 @@ type
     function GetDpRect: TRectF;
 
     function GetMarginRect(const AForm: TCommonCustomForm): TRectF;
-    procedure Update(const AForm: TCommonCustomForm);
+    procedure Measure(const AForm: TCommonCustomForm);
 
     property PxRect: TRect read GetPxRect;
     property DpRect: TRectF read GetDpRect;
@@ -41,7 +41,7 @@ type
     function GetDpRect: TRectF;
 
     function GetMarginRect(const AForm: TCommonCustomForm): TRectF; virtual;
-    procedure Update(const AForm: TCommonCustomForm); virtual; abstract;
+    procedure Measure(const AForm: TCommonCustomForm); virtual; abstract;
   public
     constructor Create; reintroduce;
   end;
@@ -110,7 +110,7 @@ end;
 constructor TCustomSafeArea.Create;
 begin
   inherited Create;
-  Update(nil);
+  Measure(nil);
 end;
 
 function TCustomSafeArea.GetDpRect: TRectF;
@@ -120,7 +120,7 @@ end;
 
 function TCustomSafeArea.GetMarginRect(const AForm: TCommonCustomForm): TRectF;
 begin
-  Update(AForm);
+  Measure(AForm);
   Result := FMarginRect;
 end;
 

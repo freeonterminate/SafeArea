@@ -39,7 +39,7 @@ uses
 type
   TMacSafeArea = class(TCustomSafeArea)
   protected
-    procedure Update(const AForm: TCommonCustomForm); override;
+    procedure Measure(const AForm: TCommonCustomForm); override;
   end;
 
   TMacSafeAreaFactory = class(TSafeAreaFactory)
@@ -67,7 +67,7 @@ end;
 
 { TMacSafeArea }
 
-procedure TMacSafeArea.Update(const AForm: TCommonCustomForm);
+procedure TMacSafeArea.Measure(const AForm: TCommonCustomForm);
 begin
   var F := TSafeAreaUtils.GetActiveForm(AForm);
   var D := TSafeAreaUtils.GetFormDisplay(F);

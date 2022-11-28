@@ -26,6 +26,7 @@ uses
   System.Classes
   , System.SysUtils
   , System.Types
+  , iOSapi.UIKit
   , FMX.Forms
   , FMX.Helpers.iOS
   , FMX.Platform
@@ -37,7 +38,7 @@ uses
 type
   TiOSSafeArea = class(TCustomSafeArea)
   protected
-    procedure Update(const AForm: TCommonCustomForm); override;
+    procedure Measure(const AForm: TCommonCustomForm); override;
   end;
 
   TiOSSafeAreaFactory = class(TSafeAreaFactory)
@@ -60,27 +61,33 @@ end;
 
 { TiOSSafeArea }
 
-procedure TiOSSafeArea.Update(const AForm: TCommonCustomForm);
+procedure TiOSSafeArea.Measure(const AForm: TCommonCustomForm);
 begin
   var FormTop := 0.0;
   var Insets := TRectF.Empty;
   var DpWorkArea := MainScreen.bounds.ToRectF;
 
+  var Wnd: UIWindow := nil;
+
   var F := TSafeAreaUtils.GetActiveForm(AForm);
   if F <> nil then
+    Wnd := WindowHandleToPlatform(F.Handle).Wnd;
+
+  if
+    (Wnd = nil) and
+    (SharedApplication.windows <> nil) and
+    (SharedApplication.windows.count > 0)
+  then
+    Wnd := TUIWindow.Wrap(SharedApplication.windows.objectAtIndex(0));
+
+  if TOSVersion.Check(11) and (Wnd <> nil) then
   begin
-    FormTop := F.Top;
-
-    var Wnd := WindowHandleToPlatform(F.Handle).Wnd;
-
-    if TOSVersion.Check(11) then
-    begin
-      var OrgInsets := Wnd.safeAreaInsets;
-      Insets :=
-        RectF(OrgInsets.left, OrgInsets.top, OrgInsets.right, OrgInsets.bottom);
-    end;
+    var OrgInsets := Wnd.safeAreaInsets;
+    Insets :=
+      RectF(OrgInsets.left, OrgInsets.top, OrgInsets.right, OrgInsets.bottom);
 
     DpWorkArea := Wnd.bounds.ToRectF;
+    FormTop := DpWorkArea.Top;
   end;
 
   FDpRect.Left := DpWorkArea.Left + Insets.left;
@@ -88,7 +95,6 @@ begin
   FDpRect.Right := DpWorkArea.Right - Insets.right;
   FDpRect.Bottom := DpWorkArea.Bottom - Insets.bottom;
 
-  //var S := MainScreen.scale;
   var S := TSafeAreaUtils.GetScale(F);
   FPxRect :=
     RectF(

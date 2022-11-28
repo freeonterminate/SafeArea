@@ -14,11 +14,22 @@
  *   TSafeArea.DpRect: SafeArea by Dp
  *   TSafeArea.PxRect: SafeArea by Pixel (Physical Coordinates)
  *
- * EXAMPLE
- *   // Root is a TLayout placed on top of Form and Root.Align = Contents.
- *   // Place any other control on top of the Root and
- *   // it will automatically support the SafeArea.
- *   Root.Margin.Rect := TSafeArea.GetMerginRect(Form);
+ *   TSafeArea.GetMarginRect: SafeAreaInsets Margin
+ *     Root is a TLayout placed on top of Form and Root.Align = Contents.
+ *     Assigning GetMarginRect to Root.Margin will position the Root within
+ *     SafeArea.
+ *     Place any other control on top of the Root and it will automatically
+ *     support SafeArea.
+ *
+ *     SafeArea will not return the correct value if not displayed.
+ *     Therefore, OnCreate will not return the correct value.
+ *     Call GetMarginRect on an event such as OnShow when the area is already
+ *     displayed.
+ *
+ *     procedure TForm1.FormShow(Sender: TObject);
+ *     begin
+ *       Root.Margin.Rect := TSafeArea.GetMerginRect(Form);
+ *     end;
  *
  * HISTORY
  *   2022/11/27 Version 1.0.0
@@ -111,7 +122,7 @@ end;
 class procedure TSafeArea.Update(const AForm: TCommonCustomForm);
 begin
   if FSafeArea <> nil then
-    FSafeArea.Update(AForm);
+    FSafeArea.Measure(AForm);
 end;
 
 end.

@@ -41,7 +41,7 @@ uses
 type
   TAndroidSafeArea = class(TCustomSafeArea)
   protected
-    procedure Update(const AForm: TCommonCustomForm); override;
+    procedure Measure(const AForm: TCommonCustomForm); override;
   end;
 
   TAndroidSafeAreaFactory = class(TSafeAreaFactory)
@@ -145,7 +145,7 @@ end;
 
 { TAndroidSafeArea }
 
-procedure TAndroidSafeArea.Update(const AForm: TCommonCustomForm);
+procedure TAndroidSafeArea.Measure(const AForm: TCommonCustomForm);
 begin
   // WorkArea / Scale / SysScale 取得
   var SysScale := 1.0;
