@@ -23,6 +23,11 @@ begin
 end;
 ```
 
+# 注意
+StatusBar などのシステム領域が Cutout に含まれて返ってくる端末があります。<br>
+Fullscreen 表示の時でも OS から返ってきた値をそのまま渡しているので、上記の端末では適宜必要な値（GetMarginRect.Left や Right など）だけ取得してください。
+
+
 # ライセンス
 Copyright (c) 2022 HOSOKAWA Jun
 Twitter: @pik
