@@ -170,8 +170,8 @@ begin
   var D := TSafeAreaUtils.GetFormDisplay(AForm);
 
   var PxWorkArea := D.PhysicalWorkArea;
+  var BasePxRect: TRectF := PxWorkArea;
   var PxCutoutTop := 0.0;
-  var BasePxRect := TRectF.Empty;
 
   if TOSVersion.Check(13) then
   begin
@@ -203,27 +203,27 @@ begin
     if TOSVersion.Check(12) then
     begin
       // Version 12
-      var Cutout :=
+      var Insets :=
         TJWindowInsets30.Wrap(
           TAndroidHelper.JObjectToID(
             TAndroidHelper.Activity.getWindow.getDecorView.getRootWindowInsets
           )
-        ).getDisplayCutout;
+        );
 
-      if Cutout <> nil then
+      if Insets <> nil then
       begin
-        PxCutoutTop := Cutout.getSafeInsetTop;
+        var Cutout := Insets.getDisplayCutout;
 
-        BasePxRect.left := PxWorkArea.left + Cutout.getSafeInsetLeft;
-        BasePxRect.Top := PxWorkArea.Top + PxCutoutTop;
-        BasePxRect.Right := PxWorkArea.Right - Cutout.getSafeInsetRight;
-        BasePxRect.Bottom := PxWorkArea.Bottom - Cutout.getSafeInsetBottom;
+        if Cutout <> nil then
+        begin
+          PxCutoutTop := Cutout.getSafeInsetTop;
+
+          BasePxRect.left := PxWorkArea.left + Cutout.getSafeInsetLeft;
+          BasePxRect.Top := PxWorkArea.Top + PxCutoutTop;
+          BasePxRect.Right := PxWorkArea.Right - Cutout.getSafeInsetRight;
+          BasePxRect.Bottom := PxWorkArea.Bottom - Cutout.getSafeInsetBottom;
+        end;
       end;
-    end
-    else
-    begin
-      // Version 12 未満
-      BasePxRect := PxWorkArea;
     end;
   end;
 

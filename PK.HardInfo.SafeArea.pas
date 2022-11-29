@@ -32,7 +32,7 @@
  *     end;
  *
  * HISTORY
- *   2022/11/27 Version 1.0.0
+ *   2022/11/29 Version 1.0.0
  *)
 
 unit PK.HardInfo.SafeArea;
